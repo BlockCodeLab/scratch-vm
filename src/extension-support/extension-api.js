@@ -7,6 +7,7 @@ const TargetType = require('./target-type');
 
 const Video = require('../io/video');
 const BLE = require('../io/web-ble');
+const Serial = require('../io/web-serial');
 
 const Base64Util = require('../util/base64-util');
 const Cast = require('../util/cast');
@@ -29,6 +30,7 @@ const Scratch = {
     /* io */
     Video,
     BLE,
+    Serial,
     /* util */
     Base64Util,
     Cast,
