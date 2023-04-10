@@ -1,6 +1,8 @@
 const dispatch = require('../dispatch/central-dispatch');
 const log = require('../util/log');
 const maybeFormatMessage = require('../util/maybe-format-message');
+const fetchExtensionData = require('../util/fetch-extension-data');
+const {validURL} = require('../util/url-util');
 
 const BlockType = require('./block-type');
 
@@ -13,17 +15,17 @@ const builtinExtensions = {
     // but serves as a reference for loading core blocks as extensions.
     coreExample: () => require('../blocks/scratch3_core_example'),
     // These are the non-core built-in extensions.
-    pen: () => require('../extensions/scratch3_pen'),
-    wedo2: () => require('../extensions/scratch3_wedo2'),
-    music: () => require('../extensions/scratch3_music'),
-    microbit: () => require('../extensions/scratch3_microbit'),
-    text2speech: () => require('../extensions/scratch3_text2speech'),
-    translate: () => require('../extensions/scratch3_translate'),
-    videoSensing: () => require('../extensions/scratch3_video_sensing'),
-    ev3: () => require('../extensions/scratch3_ev3'),
-    makeymakey: () => require('../extensions/scratch3_makeymakey'),
-    boost: () => require('../extensions/scratch3_boost'),
-    gdxfor: () => require('../extensions/scratch3_gdx_for')
+    // pen: () => require('../extensions/scratch3_pen'),
+    // wedo2: () => require('../extensions/scratch3_wedo2'),
+    // music: () => require('../extensions/scratch3_music'),
+    // microbit: () => require('../extensions/scratch3_microbit'),
+    // text2speech: () => require('../extensions/scratch3_text2speech'),
+    // translate: () => require('../extensions/scratch3_translate'),
+    // videoSensing: () => require('../extensions/scratch3_video_sensing'),
+    // ev3: () => require('../extensions/scratch3_ev3'),
+    // makeymakey: () => require('../extensions/scratch3_makeymakey'),
+    // boost: () => require('../extensions/scratch3_boost'),
+    // gdxfor: () => require('../extensions/scratch3_gdx_for')
 };
 
 /**
@@ -59,7 +61,7 @@ const builtinExtensions = {
  */
 
 class ExtensionManager {
-    constructor (runtime) {
+    constructor (vm) {
         /**
          * The ID number to provide to the next extension worker.
          * @type {int}
@@ -90,9 +92,16 @@ class ExtensionManager {
         /**
          * Keep a reference to the runtime so we can construct internal extension objects.
          * TODO: remove this in favor of extensions accessing the runtime as a service.
+         * @type {VirtualMachine}
+         */
+        this.vm = vm;
+
+        /**
+         * Keep a reference to the runtime so we can construct internal extension objects.
+         * TODO: remove this in favor of extensions accessing the runtime as a service.
          * @type {Runtime}
          */
-        this.runtime = runtime;
+        this.runtime = vm.runtime;
 
         dispatch.setService('extensions', this).catch(e => {
             log.error(`ExtensionManager was unable to register extension service: ${JSON.stringify(e)}`);
@@ -155,12 +164,43 @@ class ExtensionManager {
             return Promise.resolve();
         }
 
-        return new Promise((resolve, reject) => {
-            // If we `require` this at the global level it breaks non-webpack targets, including tests
-            const ExtensionWorker = require('worker-loader?name=extension-worker.js!./extension-worker');
+        if (validURL(extensionURL, true)) {
+            const load = require('./extension-loader').load;
+            return load(extensionURL, this.vm).then(extensionObjects => {
+                const fakeWorkerId = this.nextExtensionWorker++;
+                for (const extensionObject of extensionObjects) {
+                    const extensionInfo = extensionObject.getInfo();
+                    const extensionId = extensionInfo.id;
 
-            this.pendingExtensions.push({extensionURL, resolve, reject});
-            dispatch.addWorker(new ExtensionWorker());
+                    if (this.isExtensionLoaded(extensionId)) {
+                        const message = `Rejecting attempt to load a second extension with ID ${extensionId}`;
+                        log.warn(message);
+                        continue;
+                    }
+
+                    const serviceName = `extension.${fakeWorkerId}.${extensionId}`;
+                    dispatch.setServiceSync(serviceName, extensionObject);
+                    dispatch.callSync('extensions', 'registerExtensionServiceSync', serviceName);
+                    this._loadedExtensions.set(extensionId, serviceName);
+                }
+            });
+        }
+
+        if (validURL(extensionURL)) {
+            return new Promise((resolve, reject) => {
+                // If we `require` this at the global level it breaks non-webpack targets, including tests
+                const ExtensionWorker = require('worker-loader?name=extension-worker.js!./extension-worker');
+
+                this.pendingExtensions.push({extensionURL, resolve, reject});
+                dispatch.addWorker(new ExtensionWorker());
+            });
+        }
+
+        return this.fetchExtensionData(extensionData => {
+            const extension = extensionData.find(e => e.extensionId === extensionURL);
+            if (extension) {
+                return this.loadExtensionURL(extension.extensionURL);
+            }
         });
     }
 
@@ -169,6 +209,8 @@ class ExtensionManager {
      * @returns {Promise} resolved once all the extensions have been reinitialized
      */
     refreshBlocks () {
+        const setupTranslations = require('./extension-loader').setupTranslations;
+        setupTranslations();
         const allPromises = Array.from(this._loadedExtensions.values()).map(serviceName =>
             dispatch.call(serviceName, 'getInfo')
                 .then(info => {
@@ -204,6 +246,7 @@ class ExtensionManager {
      */
     registerExtensionService (serviceName) {
         dispatch.call(serviceName, 'getInfo').then(info => {
+            this._loadedExtensions.set(info.id, serviceName);
             this._registerExtensionInfo(serviceName, info);
         });
     }
@@ -434,6 +477,10 @@ class ExtensionManager {
         }
 
         return blockInfo;
+    }
+
+    fetchExtensionData (callback) {
+        return fetchExtensionData().then(callback);
     }
 }
 

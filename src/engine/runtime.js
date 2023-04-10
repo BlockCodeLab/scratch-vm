@@ -586,6 +586,30 @@ class Runtime extends EventEmitter {
     }
 
     /**
+     * Event name for extenion importing from remote.
+     * @const {string}
+     */
+    static get EXTENSION_IMPORTING () {
+        return 'EXTENSION_IMPORTING';
+    }
+
+    /**
+     * Event name for extenion loading data from remote.
+     * @const {string}
+     */
+    static get EXTENSION_DATA_LOADING () {
+        return 'EXTENSION_DATA_LOADING';
+    }
+
+    /**
+     * Event name for extenion downloading data to peripheral devices.
+     * @const {string}
+     */
+    static get EXTENSION_DATA_DOWNLOADING () {
+        return 'EXTENSION_DATA_DOWNLOADING';
+    }
+
+    /**
      * Event name for reporting that an extension was added.
      * @const {string}
      */
@@ -908,6 +932,32 @@ class Runtime extends EventEmitter {
                 );
 
                 categoryInfo.customFieldTypes[fieldTypeName] = fieldTypeInfo;
+            }
+        }
+
+        if (extensionInfo.docsURI) {
+            try {
+                const url = new URL(extensionInfo.docsURI);
+                if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+                    throw new Error('invalid protocol');
+                }
+                const xml = '<button ' +
+                    `text="${xmlEscape(maybeFormatMessage({
+                        // note: this translation is hardcoded in translation upload scripts
+                        id: 'gui.blocks.openDocumentation',
+                        default: 'Open Documentation',
+                        description: 'Button to open extensions docsURI'
+                    }))}" ` +
+                    'callbackKey="OPEN_DOCUMENTATION" ' +
+                    `web-class="docs-uri-${xmlEscape(extensionInfo.docsURI)}"></button>`;
+                const block = {
+                    info: {},
+                    xml
+                };
+                categoryInfo.blocks.push(block);
+                extensionInfo.blocks.unshift('---');
+            } catch (e) {
+                log.warn('cannot create docsURI button', e);
             }
         }
 
@@ -1553,6 +1603,18 @@ class Runtime extends EventEmitter {
             isConnected = this.peripheralExtensions[extensionId].isConnected();
         }
         return isConnected;
+    }
+
+    emitExtensionImporting (importing) {
+        this.emit(Runtime.EXTENSION_IMPORTING, importing);
+    }
+
+    emitExtensionLoading (loading) {
+        this.emit(Runtime.EXTENSION_DATA_LOADING, loading);
+    }
+
+    emitExtensionDownloading (downloading) {
+        this.emit(Runtime.EXTENSION_DATA_DOWNLOADING, downloading);
     }
 
     /**

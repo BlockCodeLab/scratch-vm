@@ -109,6 +109,15 @@ class VirtualMachine extends EventEmitter {
         this.runtime.on(Runtime.BLOCK_DRAG_END, (blocks, topBlockId) => {
             this.emit(Runtime.BLOCK_DRAG_END, blocks, topBlockId);
         });
+        this.runtime.on(Runtime.EXTENSION_IMPORTING, importing => {
+            this.emit(Runtime.EXTENSION_IMPORTING, importing);
+        });
+        this.runtime.on(Runtime.EXTENSION_DATA_LOADING, loading => {
+            this.emit(Runtime.EXTENSION_DATA_LOADING, loading);
+        });
+        this.runtime.on(Runtime.EXTENSION_DATA_DOWNLOADING, downloading => {
+            this.emit(Runtime.EXTENSION_DATA_DOWNLOADING, downloading);
+        });
         this.runtime.on(Runtime.EXTENSION_ADDED, categoryInfo => {
             this.emit(Runtime.EXTENSION_ADDED, categoryInfo);
         });
@@ -155,7 +164,7 @@ class VirtualMachine extends EventEmitter {
             this.emit(Runtime.HAS_CLOUD_DATA_UPDATE, hasCloudData);
         });
 
-        this.extensionManager = new ExtensionManager(this.runtime);
+        this.extensionManager = new ExtensionManager(this);
 
         // Load core extensions
         for (const id of CORE_EXTENSIONS) {
