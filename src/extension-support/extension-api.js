@@ -5,7 +5,6 @@ const ArgumentType = require('./argument-type');
 const BlockType = require('./block-type');
 const TargetType = require('./target-type');
 
-const Video = require('../io/video');
 const BLE = require('../io/web-ble');
 const Serial = require('../io/web-serial');
 
@@ -28,7 +27,6 @@ const Scratch = {
     BlockType,
     TargetType,
     /* io */
-    Video,
     BLE,
     Serial,
     /* util */
