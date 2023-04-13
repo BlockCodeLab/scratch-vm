@@ -14,7 +14,7 @@ const storeData = (data, resolve) => {
     }
 
     const extensionData = data.map(extension => {
-        const extensionUrl = parseURL(`extensions/${camel2under(extension.extensionId)}`);
+        const extensionUrl = parseURL(`/extensions/${camel2under(extension.extensionId)}`);
         extension.extensionURL = `${extensionUrl}/index.js`;
         extension.iconURL = `${extensionUrl}/${extension.iconURL}`;
         extension.insetIconURL = `${extensionUrl}/${extension.insetIconURL}`;
@@ -49,7 +49,7 @@ const fetchExtensionData = () => new Promise(resolve => {
         return;
     }
 
-    fetch(parseURL(`extensions/${locale}.json`))
+    fetch(parseURL(`/extensions/${locale}.json`))
         .then(res => res.json())
         .then(res => storeData(res, resolve))
         .catch(() => fetch(parseURL(`extensions/en.json`))
