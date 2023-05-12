@@ -27,6 +27,17 @@ const loadScript = url => new Promise((resolve, reject) => {
     document.body.appendChild(script);
 });
 
+const loadStyle = url => new Promise((resolve, reject) => {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.onerror = () => {
+        reject(new Error(`Error in style ${url}`));
+    };
+    link.onload = resolve;
+    link.href = url;
+    document.body.appendChild(link);
+});
+
 /**
  * Sets up the global.Scratch API for an unsandboxed extension.
  * @param {string} extensionURL - unsandboxed extension url
@@ -41,6 +52,15 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
     const pendingModules = [];
 
     const extensionObjects = [];
+
+    Scratch.gui = {
+        addon (option) {
+            setTimeout(() => {
+                vm.emit('ADDON', option);
+            }, 0);
+
+        }
+    };
 
     Scratch.extensions = {
         /**
@@ -83,7 +103,7 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
 
     Scratch.require = url => new Promise((resolveModule, reject) => {
         if (validURL(url)) {
-            loadScript(url)
+            (/\.css$/i.test(url) ? loadStyle(url) : loadScript(url))
                 .then(resolveModule)
                 .catch(reject);
             return;
@@ -93,9 +113,15 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
             reject(new Error(`Unable to parse ${url}`));
             return;
         }
-        pendingModules.push(resolveModule);
-        loadScript(scriptURL)
-            .catch(reject);
+        if (/\.css$/i.test(url)) {
+            loadStyle(scriptURL)
+                .then(resolveModule)
+                .catch(reject);
+        } else {
+            pendingModules.push(resolveModule);
+            loadScript(scriptURL)
+                .catch(reject);
+        }
     });
     Scratch.require.resolve = resolveUrl;
 
