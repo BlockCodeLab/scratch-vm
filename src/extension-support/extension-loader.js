@@ -96,6 +96,25 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
                 translationMap[key] = Object.assign(translationMap[key] || {}, value);
             }
             setupTranslations();
+        },
+
+        /**
+         * extension configuration value
+         *
+         * @param {string} extensionId - extension id
+         * @return {any} the configuration value for the given extensionId or null if it does
+         * not exist
+         */
+        getConfig (extensionId) {
+            // synchronous localStorage on the same domain
+            const arrCookie = document.cookie.split('; ');
+            for (let i = 0; i < arrCookie.length; i++) {
+                const arr = arrCookie[i].split('=');
+                if (arr[0].includes('token_')) {
+                    localStorage.setItem(arr[0], decodeURIComponent(arr[1]));
+                }
+            }
+            return JSON.parse(localStorage.getItem(`token_${extensionId}`));
         }
     };
 
