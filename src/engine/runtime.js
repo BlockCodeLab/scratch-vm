@@ -961,6 +961,30 @@ class Runtime extends EventEmitter {
             }
         }
 
+        if (extensionInfo.boards) {
+            try {
+                const xml = '<button ' +
+                    `text="${xmlEscape(maybeFormatMessage({
+                        // note: this translation is hardcoded in translation upload scripts
+                        id: 'gui.blocks.selectBoard',
+                        default: 'Select Board',
+                        description: 'Button to select board'
+                    }))}" ` +
+                    'callbackKey="SELECT_BOARD" ' +
+                    `web-class="boards-${xmlEscape(encodeURIComponent(JSON.stringify({
+                        id: extensionInfo.id,
+                        boards: extensionInfo.boards
+                    })))}"></button>`;
+                const block = {
+                    info: {},
+                    xml
+                };
+                categoryInfo.blocks.push(block);
+            } catch (e) {
+                log.warn('cannot create select board button', e);
+            }
+        }
+
         for (const blockInfo of extensionInfo.blocks) {
             try {
                 const convertedBlock = this._convertForScratchBlocks(blockInfo, categoryInfo);

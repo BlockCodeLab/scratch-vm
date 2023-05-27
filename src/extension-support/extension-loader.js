@@ -2,6 +2,7 @@ const AsyncLimiter = require('async-limiter');
 const formatMessage = require('format-message');
 const ScratchCommon = require('./extension-api');
 const fetchExtensionData = require('../util/fetch-extension-data');
+const dispatch = require('../dispatch/central-dispatch');
 const {parseURL, validURL} = require('../util/url-util');
 
 const translationMap = {};
@@ -58,7 +59,6 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
             setTimeout(() => {
                 vm.emit('ADDON', option);
             }, 0);
-
         }
     };
 
@@ -75,15 +75,24 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
         /**
          * use/load unsandboxed extension by id.
          * @param {string} extensionId - extension id
+         * @return {Promise}
          */
         use (extensionId) {
-            fetchExtensionData()
+            return fetchExtensionData()
                 .then(extensionData => {
                     const extension = extensionData.find(e => e.extensionId === extensionId);
                     if (extension) {
-                        vm.extensionManager.loadExtensionURL(extension.extensionURL);
+                        return vm.extensionManager.loadExtensionURL(extension.extensionURL);
                     }
                 });
+        },
+
+        getService (extensionId) {
+            const serviceName = vm.extensionManager._loadedExtensions.get(extensionId);
+            if (!serviceName) {
+                return this.use(extensionId).then(() => this.getService(extensionId));
+            }
+            return dispatch.call.bind(dispatch, serviceName);
         },
 
         /**
