@@ -78,11 +78,15 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
          * @return {Promise}
          */
         use (extensionId) {
+            vm.emit('EXTENSION_IMPORTING', true);
             return fetchExtensionData()
                 .then(extensionData => {
                     const extension = extensionData.find(e => e.extensionId === extensionId);
                     if (extension) {
-                        return vm.extensionManager.loadExtensionURL(extension.extensionURL);
+                        return vm.extensionManager.loadExtensionURL(extension.extensionURL)
+                            .finally(() => {
+                                vm.emit('EXTENSION_IMPORTING', false);
+                            });
                     }
                 });
         },
