@@ -61,7 +61,7 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
     Scratch.gui = {
         addon (option) {
             setTimeout(() => {
-                vm.emit('ADDON', option);
+                vm.emit('SETUP_ADDON', option);
             }, 0);
         },
 
