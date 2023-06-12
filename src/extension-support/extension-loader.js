@@ -1,6 +1,7 @@
 const AsyncLimiter = require('async-limiter');
 const formatMessage = require('format-message');
 const ScratchCommon = require('./extension-api');
+const GUIComponent = require('./gui-component');
 const fetchExtensionData = require('../util/fetch-extension-data');
 const dispatch = require('../dispatch/central-dispatch');
 const {parseURL, validURL} = require('../util/url-util');
@@ -54,11 +55,57 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
 
     const extensionObjects = [];
 
+    const state = {};
+    const interrupts = new Set();
+
     Scratch.gui = {
         addon (option) {
             setTimeout(() => {
                 vm.emit('ADDON', option);
             }, 0);
+        },
+
+        get Component () {
+            return class extends GUIComponent {
+                static set initialState (newState) {
+                    Object.assign(state, newState);
+                }
+                constructor () {
+                    super();
+                    if (this.constructor.observedState) {
+                        interrupts.add([
+                            this.constructor.observedState,
+                            this.stateChangedCallback.bind(this)
+                        ]);
+                        Object.defineProperties(
+                            this._state,
+                            Object.fromEntries(
+                                this.constructor.observedState.map(name => [
+                                    name,
+                                    {get: () => state[name]}
+                                ])
+                            )
+                        );
+                    }
+                }
+                setState (name, newValue) {
+                    if (typeof name === 'object') {
+                        Object.entries(name).forEach(args => this.setState(...args));
+                        return;
+                    }
+                    if (this.constructor.observedState.includes(name)) {
+                        const oldValue = state[name];
+                        state[name] = newValue;
+                        interrupts.forEach(([observed, callback]) => {
+                            if (observed.includes(name)) {
+                                callback(name, oldValue, newValue);
+                            }
+                        });
+                    } else {
+                        super.setState(name, newValue);
+                    }
+                }
+            };
         }
     };
 

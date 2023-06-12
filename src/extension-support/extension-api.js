@@ -19,9 +19,24 @@ const RateLimiter = require('../util/rateLimiter');
 const Timer = require('../util/timer');
 const uid = require('../util/uid');
 
+const defineMessages = messages => {
+    const messageDescriptors = {};
+    Object.defineProperties(
+        messageDescriptors,
+        Object.fromEntries(
+            Object.entries(messages).map(([key, descr]) => [
+                key,
+                {get: () => formatMessage(descr)}
+            ])
+        )
+    );
+    return messageDescriptors;
+};
+
 const Scratch = {
     Buffer,
     formatMessage,
+    defineMessages,
     /* extension support */
     ArgumentType,
     BlockType,
