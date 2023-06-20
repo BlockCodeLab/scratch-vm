@@ -180,7 +180,7 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
 
     const resolveUrl = url => parseURL(url, extensionURL);
 
-    Scratch.require = url => new Promise((resolveModule, reject) => {
+    Scratch.require = (url, hasExport = true) => new Promise((resolveModule, reject) => {
         if (validURL(url)) {
             (/\.css$/i.test(url) ? loadStyle(url) : loadScript(url))
                 .then(resolveModule)
@@ -197,9 +197,12 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
                 .then(resolveModule)
                 .catch(reject);
         } else {
-            pendingModules.push(resolveModule);
-            loadScript(scriptURL)
-                .catch(reject);
+            const promise = loadScript(scriptURL).catch(reject);
+            if (hasExport) {
+                pendingModules.push(resolveModule);
+            } else {
+                promise.then(resolveModule);
+            }
         }
     });
     Scratch.require.resolve = resolveUrl;
@@ -222,14 +225,6 @@ const teardownUnsandboxedExtensionAPI = () => {
     // We can assume global.Scratch already exists.
     global.Scratch.extensions.register = () => {
         throw new Error('Too late to register new extensions.');
-    };
-    const resolve = global.Scratch.require.resolve;
-    global.Scratch.require = () => {
-        throw new Error(`Can't use require now`);
-    };
-    global.Scratch.require.resolve = resolve;
-    global.Scratch.export = () => {
-        throw new Error(`Can't use exports now`);
     };
 };
 
