@@ -122,26 +122,32 @@ const setupUnsandboxedExtensionAPI = (extensionURL, vm) => new Promise(resolve =
         /**
          * use/load unsandboxed extension by id.
          * @param {string} extensionId - extension id
-         * @return {Promise}
+         * @return {Promise} -
          */
         use (extensionId) {
-            vm.emit('EXTENSION_IMPORTING', true);
             return fetchExtensionData()
                 .then(extensionData => {
                     const extension = extensionData.find(e => e.extensionId === extensionId);
                     if (extension) {
-                        return vm.extensionManager.loadExtensionURL(extension.extensionURL)
-                            .finally(() => {
-                                vm.emit('EXTENSION_IMPORTING', false);
-                            });
+                        return vm.extensionManager.loadExtensionURL(extension.extensionURL);
                     }
                 });
         },
 
+        /**
+         * get extension service by id.
+         * @param {string} extensionId - extension id
+         * @returns {Promise} -
+         */
         getService (extensionId) {
             const serviceName = vm.extensionManager._loadedExtensions.get(extensionId);
             if (!serviceName) {
-                return this.use(extensionId).then(() => this.getService(extensionId));
+                vm.emit('EXTENSION_IMPORTING', true);
+                return this.use(extensionId)
+                    .then(() => this.getService(extensionId))
+                    .finally(() => {
+                        vm.emit('EXTENSION_IMPORTING', false);
+                    });
             }
             return dispatch.call.bind(dispatch, serviceName);
         },
