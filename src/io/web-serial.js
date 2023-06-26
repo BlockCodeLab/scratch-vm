@@ -1,4 +1,4 @@
-const log = require('../util/log');
+// const log = require('../util/log');
 const Serial = require('../util/serial');
 const transfer = require('../util/ymodem');
 const {base64ToUint8Array} = require('../util/base64-util');
@@ -145,8 +145,8 @@ class WebSerial {
      * Disconnect the device, and if the extension using this object has a
      * reset callback, call it. Finally, emit an error to the runtime.
      */
-    handleDisconnectError (e) {
-        log.error(`Serial error: ${e}`);
+    handleDisconnectError (/* e */) {
+        // log.error(`Serial error: ${e}`);
 
         if (!this._connected) return;
 
@@ -156,7 +156,6 @@ class WebSerial {
             this._resetCallback();
         }
 
-        console.log('Scratch lost connection to')
         this._runtime.emit(this._runtime.constructor.PERIPHERAL_CONNECTION_LOST_ERROR, {
             message: `Scratch lost connection to`,
             extensionId: this._extensionId
