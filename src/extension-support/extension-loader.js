@@ -56,27 +56,17 @@ const loadStyle = url => new Promise((resolve, reject) => {
 });
 
 // load local script
-const AsyncFunction = (...args) => {
-    const code = args.pop();
-    return new Function(...args, `
-        return new Promise(___resolve___ => {
-            const promise = ${code};
-            if (promise instanceof Promise) {
-                promise.then(___resolve___);
-            } else {
-                ___resolve___();
-            }
-        })
-    `);
-};
-const localScript = url => new Promise((resolve, reject) => {
-    fetch(url)
-        .then(res => res.text())
-        .then(text => {
-            resolve(AsyncFunction('Scratch', 'require', 'exports', text));
-        })
-        .catch(reject);
-});
+const runScript = code => new Function('Scratch', 'require', 'exports', `
+    const promise = ${code};
+    if (promise instanceof Promise) {
+        return promise;
+    } else {
+        return Promise.resolve();
+    }
+`);
+const localScript = url => fetch(url)
+    .then(res => res.text())
+    .then(code => runScript(code));
 
 /**
  * Load an unsandboxed extension from an arbitrary URL. This is dangerous.
